@@ -122,3 +122,13 @@ export function isEmpty(object: object): boolean {
 
   return isEmpty(object)
 }
+
+/**
+ * Removes the undefined elements.
+ *
+ * @param object - The object whose undefined will be deleted.
+ * @returns A copy of the object with the undefined elements deleted.
+ */
+export function compact(object: object): object {
+  return Object.fromEntries(Object.entries(object).filter(([_, value]) => value != null))
+}

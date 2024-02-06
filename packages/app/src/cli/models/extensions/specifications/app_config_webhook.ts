@@ -1,11 +1,11 @@
-import {transformToWebhookConfig, transformWebhookConfig} from './transform/app_config_webhook.js'
+import {transformToWebhookConfig, transformFromWebhookConfig} from './transform/app_config_webhook.js'
 import {UriValidation, removeTrailingSlash} from './validation/common.js'
 import {webhookValidator} from './validation/app_config_webhook.js'
 import {CustomTransformationConfig, createConfigExtensionSpecification} from '../specification.js'
 import {zod} from '@shopify/cli-kit/node/schema'
 
 const WebhookSubscriptionSchema = zod.object({
-  topics: zod.array(zod.string()).nonempty(),
+  topics: zod.array(zod.string()).optional(),
   uri: zod.preprocess(removeTrailingSlash, UriValidation),
   sub_topic: zod.string().optional(),
   include_fields: zod.array(zod.string()).optional(),
@@ -34,7 +34,7 @@ export const WebhookSchema = zod.object({
 export const WebhooksSpecIdentifier = 'webhooks'
 
 const WebhookTransformConfig: CustomTransformationConfig = {
-  forward: (content: object) => transformWebhookConfig(content),
+  forward: (content: object) => transformFromWebhookConfig(content),
   reverse: (content: object) => transformToWebhookConfig(content),
 }
 
