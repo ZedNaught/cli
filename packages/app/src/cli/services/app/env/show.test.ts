@@ -25,7 +25,7 @@ describe('env show', () => {
     const token = 'token'
     const organization = {
       id: '123',
-      betas: {},
+      flags: {},
       businessName: 'test',
       website: '',
       apps: {nodes: []},

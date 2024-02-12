@@ -1,6 +1,6 @@
 import {OrganizationApp} from '../../models/organization.js'
 import {selectOrganizationPrompt, selectAppPrompt} from '../../prompts/dev.js'
-import {BetaFlag} from '../dev/fetch.js'
+import {Flag} from '../dev/fetch.js'
 import {ExtensionSpecification} from '../../models/extensions/specification.js'
 import {AppModuleVersion} from '../../api/graphql/app_active_version.js'
 import {buildSpecsAppConfiguration} from '../../models/app/app.js'
@@ -22,21 +22,21 @@ export async function fetchAppRemoteConfiguration(
   apiKey: string,
   developerPlatformClient: DeveloperPlatformClient,
   specifications: ExtensionSpecification[],
-  betas: BetaFlag[],
+  flags: Flag[],
 ) {
   const activeAppVersion = await developerPlatformClient.activeAppVersion(apiKey)
   const appModuleVersionsConfig =
     activeAppVersion.app.activeAppVersion?.appModuleVersions.filter(
       (module) => module.specification?.experience === 'configuration',
     ) || []
-  const remoteAppConfiguration = remoteAppConfigurationExtensionContent(appModuleVersionsConfig, specifications, betas)
+  const remoteAppConfiguration = remoteAppConfigurationExtensionContent(appModuleVersionsConfig, specifications, flags)
   return buildSpecsAppConfiguration(remoteAppConfiguration) as SpecsAppConfiguration
 }
 
 export function remoteAppConfigurationExtensionContent(
   configRegistrations: AppModuleVersion[],
   specifications: ExtensionSpecification[],
-  betas: BetaFlag[],
+  flags: Flag[],
 ) {
   let remoteAppConfig: {[key: string]: unknown} = {}
   const configSpecifications = specifications.filter((spec) => spec.experience === 'configuration')
@@ -49,7 +49,7 @@ export function remoteAppConfigurationExtensionContent(
     if (!configString) return
     const config = configString ? JSON.parse(configString) : {}
 
-    remoteAppConfig = deepMergeObjects(remoteAppConfig, configSpec.reverseTransform?.(config, {betas}) ?? config)
+    remoteAppConfig = deepMergeObjects(remoteAppConfig, configSpec.reverseTransform?.(config, {flags}) ?? config)
   })
   return {...remoteAppConfig}
 }

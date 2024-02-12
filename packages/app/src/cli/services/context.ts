@@ -210,7 +210,7 @@ export async function ensureDevContext(
     directory: options.directory,
     specifications,
     configName: getAppConfigurationShorthand(configuration.path),
-    remoteBetas: selectedApp.betas,
+    remoteFlags: selectedApp.flags,
   })
 
   // We only update the cache or config if the current app is the right one
@@ -384,7 +384,7 @@ export async function ensureDeployContext(options: DeployContextOptions): Promis
     specifications,
     directory: options.app.directory,
     configName: getAppConfigurationShorthand(options.app.configuration.path),
-    remoteBetas: partnersApp.betas,
+    remoteFlags: partnersApp.flags,
   })
 
   const org = await developerPlatformClient.orgFromId(partnersApp.organizationId)
@@ -416,7 +416,7 @@ export async function ensureDeployContext(options: DeployContextOptions): Promis
       appType: partnersApp.appType,
       organizationId: partnersApp.organizationId,
       grantedScopes: partnersApp.grantedScopes,
-      betas: partnersApp.betas,
+      flags: partnersApp.flags,
     },
     identifiers,
     release: !noRelease,
@@ -547,7 +547,6 @@ function includeConfigOnDeployPrompt(configPath: string): Promise<boolean> {
  *
  * If there is an API key via flag, configuration or env file, we check if it is valid. Otherwise, throw an error.
  * If there is no API key (or is invalid), show prompts to select an org and app.
- * If the app doesn't have the simplified deployments beta enabled, throw an error.
  * Finally, the info is updated in the env file.
  *
  * @param options - Current dev context options
@@ -588,11 +587,9 @@ interface VersionsListContextOutput {
 
 /**
  * Make sure there is a valid context to execute `versions list`
- * That means we have a valid session, organization and app with the simplified deployments beta enabled.
  *
  * If there is an API key via flag, configuration or env file, we check if it is valid. Otherwise, throw an error.
  * If there is no API key (or is invalid), show prompts to select an org and app.
- * If the app doesn't have the simplified deployments beta enabled, throw an error.
  *
  * @param options - Current dev context options
  * @returns The partners token and app

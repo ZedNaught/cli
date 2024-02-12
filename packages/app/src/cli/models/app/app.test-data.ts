@@ -130,8 +130,8 @@ export function testOrganizationApp(app: Partial<OrganizationApp> = {}): Organiz
     apiSecretKeys: [{secret: 'api-secret'}],
     organizationId: '1',
     grantedScopes: [],
-    disabledBetas: [],
-    betas: [],
+    disabledFlags: ['5b25141b'],
+    flags: [],
   }
   return {...defaultApp, ...app}
 }
