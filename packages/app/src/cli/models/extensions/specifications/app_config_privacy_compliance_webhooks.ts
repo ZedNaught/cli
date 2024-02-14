@@ -1,4 +1,4 @@
-import {WebhookSchema} from './app_config_webhook.js'
+import {ComplianceTopic, WebhookSchema} from './app_config_webhook.js'
 import {WebhookSubscription, WebhooksConfig} from './types/app_config_webhook.js'
 import {CustomTransformationConfig, createConfigExtensionSpecification} from '../specification.js'
 import {Flag} from '../../../services/dev/fetch.js'
@@ -39,13 +39,13 @@ function transformFromPrivacyComplianceWebhooksModule(content: object, options?:
   if (options?.flags?.includes(Flag.DeclarativeWebhooks)) {
     const webhooks: WebhookSubscription[] = []
     if (customersRedactUrl) {
-      webhooks.push({compliance_topics: ['customers/redact'], uri: customersRedactUrl})
+      webhooks.push({compliance_topics: [ComplianceTopic.CustomersRedact], uri: customersRedactUrl})
     }
     if (customersDataRequestUrl) {
-      webhooks.push({compliance_topics: ['customers/data_request'], uri: customersDataRequestUrl})
+      webhooks.push({compliance_topics: [ComplianceTopic.CustomersDataRequest], uri: customersDataRequestUrl})
     }
     if (shopRedactUrl) {
-      webhooks.push({compliance_topics: ['shop/redact'], uri: shopRedactUrl})
+      webhooks.push({compliance_topics: [ComplianceTopic.ShopRedact], uri: shopRedactUrl})
     }
 
     if (webhooks.length === 0) return {}

@@ -4,13 +4,23 @@ import {webhookValidator} from './validation/app_config_webhook.js'
 import {CustomTransformationConfig, createConfigExtensionSpecification} from '../specification.js'
 import {zod} from '@shopify/cli-kit/node/schema'
 
+export enum ComplianceTopic {
+  CustomersRedact = 'customers/redact',
+  CustomersDataRequest = 'customers/data_request',
+  ShopRedact = 'shop/redact',
+}
+
 const WebhookSubscriptionSchema = zod.object({
   topics: zod.array(zod.string()).optional(),
   uri: zod.preprocess(removeTrailingSlash, UriValidation),
   sub_topic: zod.string().optional(),
   include_fields: zod.array(zod.string()).optional(),
   metafield_namespaces: zod.array(zod.string()).optional(),
-  compliance_topics: zod.array(zod.enum(['customers/redact', 'customers/data_request', 'shop/redact'])).optional(),
+  compliance_topics: zod
+    .array(
+      zod.enum([ComplianceTopic.CustomersRedact, ComplianceTopic.CustomersDataRequest, ComplianceTopic.ShopRedact]),
+    )
+    .optional(),
 })
 
 const WebhooksSchema = zod.object({

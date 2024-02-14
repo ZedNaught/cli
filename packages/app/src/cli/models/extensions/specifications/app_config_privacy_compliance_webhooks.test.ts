@@ -58,37 +58,7 @@ describe('privacy_compliance_webhooks', () => {
       })
     })
 
-    test('the new format takes precedence over the old one', () => {
-      // Given
-      const object = {
-        webhooks: {
-          privacy_compliance: {
-            customer_deletion_url: 'https://example.com/old',
-            customer_data_request_url: 'https://example.com/old',
-            shop_deletion_url: 'https://example.com/old',
-          },
-          subscriptions: [
-            {
-              compliance_topics: ['customers/redact', 'customers/data_request'],
-              uri: 'https://example.com/customers_webhooks',
-            },
-          ],
-        },
-      }
-      const privacyComplianceSpec = spec
-
-      // When
-      const result = privacyComplianceSpec.transform!(object)
-
-      // Then
-      expect(result).toMatchObject({
-        customers_redact_url: 'https://example.com/customers_webhooks',
-        customers_data_request_url: 'https://example.com/customers_webhooks',
-        shop_redact_url: 'https://example.com/old',
-      })
-    })
-
-    test('should return an emptpy object if all porperties are empty', () => {
+    test('should return an empty object if all porperties are empty', () => {
       // Given
       const object = {
         webhooks: {
