@@ -5,7 +5,7 @@ import {isType} from '../../utilities/types.js'
 import {FunctionConfigType} from '../extensions/specifications/function.js'
 import {ExtensionSpecification} from '../extensions/specification.js'
 import {SpecsAppConfiguration} from '../extensions/specifications/types/app_config.js'
-import {WebhooksConfig} from '../extensions/specifications/types/app_config_webhook.js'
+import {WebhookSubscription, WebhooksConfig} from '../extensions/specifications/types/app_config_webhook.js'
 import {Flag} from '../../services/dev/fetch.js'
 import {zod} from '@shopify/cli-kit/node/schema'
 import {DotEnvFile} from '@shopify/cli-kit/node/dot-env'
@@ -13,7 +13,7 @@ import {getDependencies, PackageManager, readAndParsePackageJson} from '@shopify
 import {fileRealPath, findPathUp} from '@shopify/cli-kit/node/fs'
 import {joinPath} from '@shopify/cli-kit/node/path'
 import {AbortError} from '@shopify/cli-kit/node/error'
-import {getPathValue} from '@shopify/cli-kit/common/object'
+import {getPathValue, setPathValue} from '@shopify/cli-kit/common/object'
 
 export const LegacyAppSchema = zod
   .object({
@@ -343,9 +343,39 @@ function posConfiguration(configuration: object) {
 }
 
 function webhooksConfiguration(configuration: object) {
-  return {
-    webhooks: {...getPathValue<WebhooksConfig>(configuration, 'webhooks')},
+  const webhooks = getPathValue<WebhooksConfig>(configuration, 'webhooks') as WebhooksConfig
+  if (webhooks?.subscriptions) {
+    const simplifiedSubscritions = simplifySubscriptions(webhooks.subscriptions)
+    setPathValue(webhooks, 'subscriptions', simplifiedSubscritions)
   }
+  return {webhooks}
+}
+
+function simplifySubscriptions(subscriptions: WebhookSubscription[] | undefined): WebhookSubscription[] {
+  if (!subscriptions) return []
+
+  return subscriptions.reduce((accumulator, subscription) => {
+    const existingSubscription = accumulator.find(
+      (sub) =>
+        sub.uri === subscription.uri &&
+        sub.sub_topic === subscription.sub_topic &&
+        sub.include_fields === subscription.include_fields &&
+        sub.metafield_namespaces === subscription.metafield_namespaces,
+    )
+    if (existingSubscription) {
+      if (subscription.compliance_topics) {
+        existingSubscription.compliance_topics ??= []
+        existingSubscription.compliance_topics.push(...subscription.compliance_topics)
+      }
+      if (subscription.topics) {
+        existingSubscription.topics ??= []
+        existingSubscription.topics.push(...subscription.topics)
+      }
+    } else {
+      accumulator.push(subscription)
+    }
+    return accumulator
+  }, [] as WebhookSubscription[])
 }
 
 function accessConfiguration(configuration: object) {
