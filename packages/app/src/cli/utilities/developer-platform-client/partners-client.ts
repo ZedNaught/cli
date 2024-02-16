@@ -10,7 +10,7 @@ import {
   fetchOrganizations,
   fetchOrgAndApps,
   fetchOrgFromId,
-  filterDisabledBetas,
+  filterDisabledFlags,
 } from '../../../cli/services/dev/fetch.js'
 import {MinimalOrganizationApp, Organization, OrganizationApp, OrganizationStore} from '../../models/organization.js'
 import {selectOrganizationPrompt} from '../../prompts/dev.js'
@@ -170,8 +170,8 @@ export class PartnersClient implements DeveloperPlatformClient {
       throw new AbortError(errors)
     }
 
-    const betas = filterDisabledBetas(result.appCreate.app.disabledBetas)
-    return {...result.appCreate.app, organizationId: org.id, newApp: true, betas}
+    const flags = filterDisabledFlags(result.appCreate.app.disabledFlags)
+    return {...result.appCreate.app, organizationId: org.id, newApp: true, flags}
   }
 
   async devStoresForOrg(orgId: string): Promise<OrganizationStore[]> {

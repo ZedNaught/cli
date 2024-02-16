@@ -202,7 +202,7 @@ export async function ensureDevContext(
       selectedApp.apiKey,
       developerPlatformClient,
       specifications,
-      selectedApp.betas,
+      selectedApp.flags,
     ),
   }
 

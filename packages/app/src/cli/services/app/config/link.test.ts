@@ -14,6 +14,7 @@ import {AppInterface, CurrentAppConfiguration} from '../../../models/app/app.js'
 import {fetchAppRemoteConfiguration} from '../select-app.js'
 import {DeveloperPlatformClient} from '../../../utilities/developer-platform-client.js'
 import {OrganizationApp} from '../../../models/organization.js'
+import {fetchAppExtensionRegistrations} from '../../dev/fetch.js'
 import {beforeEach, describe, expect, test, vi} from 'vitest'
 import {fileExistsSync, inTemporaryDirectory, readFile, writeFileSync} from '@shopify/cli-kit/node/fs'
 import {joinPath} from '@shopify/cli-kit/node/path'
@@ -565,8 +566,9 @@ embedded = false
       // Given
       const options: LinkOptions = {
         directory: tmp,
-        commandConfig: {runHook: vi.fn(() => Promise.resolve({successes: []}))} as unknown as Config,
+        // commandConfig: {runHook: vi.fn(() => Promise.resolve({successes: []}))} as unknown as Config,
       }
+
       vi.mocked(loadApp).mockRejectedValue('App not found')
       vi.mocked(fetchOrCreateOrganizationApp).mockResolvedValue(mockRemoteApp())
       vi.mocked(fetchAppExtensionRegistrations).mockResolvedValue({
@@ -590,6 +592,11 @@ embedded = false
           dashboardManagedExtensionRegistrations: [],
         },
       })
+      const remoteConfiguration = {
+        ...DEFAULT_REMOTE_CONFIGURATION,
+        access_scopes: {scopes: 'read_products,write_orders'},
+      }
+      vi.mocked(fetchAppRemoteConfiguration).mockResolvedValue(remoteConfiguration)
 
       // When
       await link(options)
