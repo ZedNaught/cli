@@ -18,7 +18,7 @@ type FileBatch = string[]
 export const MAX_BATCH_FILE_COUNT = 10
 // 100KB
 export const MAX_BATCH_BYTESIZE = 102400
-export const MAX_UPLOAD_RETRY_COUNT = 3
+export const MAX_UPLOAD_RETRY_COUNT = 2
 
 export async function uploadTheme(
   theme: Theme,
