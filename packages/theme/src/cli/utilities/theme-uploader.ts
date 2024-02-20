@@ -1,4 +1,5 @@
 import {partitionThemeFiles, readThemeFile} from './theme-fs.js'
+import {applyIgnoreFilters} from './asset-ignore.js'
 import {AdminSession} from '@shopify/cli-kit/node/session'
 import {BulkUploadResult, Checksum, Theme, ThemeFileSystem} from '@shopify/cli-kit/node/themes/types'
 import {AssetParams, bulkUploadThemeAssets, deleteThemeAsset} from '@shopify/cli-kit/node/themes/api'
@@ -8,6 +9,8 @@ import {Task, renderTasks as renderTaskOriginal} from '@shopify/cli-kit/node/ui'
 interface UploadOptions {
   path: string
   nodelete?: boolean
+  ignore?: string[]
+  only?: string[]
 }
 type FileBatch = string[]
 
@@ -24,7 +27,7 @@ export async function uploadTheme(
   themeFileSystem: ThemeFileSystem,
   options: UploadOptions,
 ) {
-  const {jsonTasks, otherTasks} = buildDeleteTasks(remoteChecksums, themeFileSystem, options, theme, session)
+  const {jsonTasks, otherTasks} = await buildDeleteTasks(remoteChecksums, themeFileSystem, options, theme, session)
   const {liquidUploadTasks, jsonUploadTasks, configUploadTasks, staticUploadTasks} = await buildUploadTasks(
     remoteChecksums,
     themeFileSystem,
@@ -41,7 +44,7 @@ export async function uploadTheme(
   await renderTasks(staticUploadTasks)
 }
 
-function buildDeleteTasks(
+async function buildDeleteTasks(
   remoteChecksums: Checksum[],
   themeFileSystem: ThemeFileSystem,
   options: UploadOptions,
@@ -52,9 +55,10 @@ function buildDeleteTasks(
     return {jsonTasks: [], otherTasks: []}
   }
 
+  const filteredChecksums = await applyIgnoreFilters(remoteChecksums, themeFileSystem, options)
   const localKeys = new Set(themeFileSystem.files.keys())
 
-  const remoteFilesToBeDeleted = remoteChecksums.filter((checksum) => !localKeys.has(checksum.key))
+  const remoteFilesToBeDeleted = filteredChecksums.filter((checksum) => !localKeys.has(checksum.key))
   const {jsonFiles, liquidFiles, configFiles, staticAssetFiles} = partitionThemeFiles(
     remoteFilesToBeDeleted.map((checksum) => checksum.key),
   )
@@ -85,8 +89,11 @@ async function buildUploadTasks(
   session: AdminSession,
 ): Promise<{liquidUploadTasks: Task[]; jsonUploadTasks: Task[]; configUploadTasks: Task[]; staticUploadTasks: Task[]}> {
   const localChecksums = calculateLocalChecksums(themeFileSystem)
+  const filteredChecksums = await applyIgnoreFilters(localChecksums, themeFileSystem, options)
   // this seems incorrect (selecting too many files)
-  const filesToUpload = (await selectUploadableFiles(remoteChecksums, localChecksums)).map((checksum) => checksum.key)
+  const filesToUpload = (await selectUploadableFiles(remoteChecksums, filteredChecksums)).map(
+    (checksum) => checksum.key,
+  )
   await readThemeFilesFromDisk(filesToUpload, themeFileSystem)
 
   const {jsonFiles, liquidFiles, configFiles, staticAssetFiles} = partitionThemeFiles(filesToUpload)

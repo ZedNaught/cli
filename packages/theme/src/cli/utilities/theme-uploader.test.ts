@@ -388,4 +388,75 @@ describe('theme-uploader', () => {
       adminSession,
     )
   })
+
+  test('should not delete or upload files specified by the --ignore flag', async () => {
+    // Given
+    const remote = [
+      {key: 'assets/keepme.liquid', checksum: '1'},
+      {key: 'assets/ignore_delete.liquid', checksum: '2'},
+    ]
+    const local = {
+      root: 'tmp',
+      files: new Map([
+        ['assets/keepme.liquid', {key: 'assets/keepme.liquid', checksum: '3'}],
+        ['assets/ignore_upload.liquid', {key: 'assets/ignore_upload.liquid', checksum: '4'}],
+      ]),
+    } as ThemeFileSystem
+
+    // When
+    await uploadTheme(remoteTheme, adminSession, remote, local, {
+      ...uploadOptions,
+      ignore: ['assets/ignore_delete.liquid', 'assets/ignore_upload.liquid'],
+    })
+
+    // Then
+    expect(vi.mocked(deleteThemeAsset)).not.toHaveBeenCalled()
+    expect(bulkUploadThemeAssets).toHaveBeenCalledOnce()
+    expect(bulkUploadThemeAssets).toHaveBeenCalledWith(
+      remoteTheme.id,
+      [
+        {
+          key: 'assets/keepme.liquid',
+          value: 'assets/keepme.liquid',
+        },
+      ],
+      adminSession,
+    )
+  })
+
+  test('should only delete and upload files specified by --only flag', async () => {
+    // Given
+    const remote = [
+      {key: 'assets/keepme.liquid', checksum: '1'},
+      {key: 'assets/deleteme.liquid', checksum: '2'},
+    ]
+    const local = {
+      root: 'tmp',
+      files: new Map([
+        ['assets/keepme.liquid', {key: 'assets/keepme.liquid', checksum: '1'}],
+        ['assets/uploadme.liquid', {key: 'assets/uploadme.liquid', checksum: '3'}],
+      ]),
+    } as ThemeFileSystem
+
+    // When
+    await uploadTheme(remoteTheme, adminSession, remote, local, {
+      ...uploadOptions,
+      only: ['assets/keepme.liquid', 'assets/deleteme.liquid', 'assets/uploadme.liquid'],
+    })
+
+    // Then
+    expect(vi.mocked(deleteThemeAsset)).toHaveBeenCalledOnce()
+    expect(vi.mocked(deleteThemeAsset)).toHaveBeenCalledWith(remoteTheme.id, 'assets/deleteme.liquid', adminSession)
+    expect(bulkUploadThemeAssets).toHaveBeenCalledOnce()
+    expect(bulkUploadThemeAssets).toHaveBeenCalledWith(
+      remoteTheme.id,
+      [
+        {
+          key: 'assets/uploadme.liquid',
+          value: 'assets/uploadme.liquid',
+        },
+      ],
+      adminSession,
+    )
+  })
 })
