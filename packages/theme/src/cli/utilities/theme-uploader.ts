@@ -56,18 +56,25 @@ async function buildDeleteTasks(
   }
 
   const filteredChecksums = await applyIgnoreFilters(remoteChecksums, themeFileSystem, options)
-  const localKeys = new Set(themeFileSystem.files.keys())
 
-  const remoteFilesToBeDeleted = filteredChecksums.filter((checksum) => !localKeys.has(checksum.key))
-  const {jsonFiles, liquidFiles, configFiles, staticAssetFiles} = partitionThemeFiles(
-    remoteFilesToBeDeleted.map((checksum) => checksum.key),
-  )
+  const remoteFilesToBeDeleted = await getRemoteFilesToBeDeleted(filteredChecksums, themeFileSystem, options)
+  const {jsonFiles, liquidFiles, configFiles, staticAssetFiles} = partitionThemeFiles(remoteFilesToBeDeleted)
   const otherFiles = [...liquidFiles, ...configFiles, ...staticAssetFiles]
 
   const jsonTasks = createDeleteTasks(jsonFiles, theme.id, session)
   const otherTasks = createDeleteTasks(otherFiles, theme.id, session)
 
   return {jsonTasks, otherTasks}
+}
+
+async function getRemoteFilesToBeDeleted(
+  remoteChecksums: Checksum[],
+  themeFileSystem: ThemeFileSystem,
+  options: UploadOptions,
+): Promise<string[]> {
+  const localKeys = new Set(themeFileSystem.files.keys())
+  const filteredChecksums = await applyIgnoreFilters(remoteChecksums, themeFileSystem, options)
+  return filteredChecksums.filter((checksum) => !localKeys.has(checksum.key)).map((checksum) => checksum.key)
 }
 
 function createDeleteTasks(files: string[], themeId: number, session: AdminSession): Task[] {
