@@ -99,6 +99,7 @@ export default class Push extends ThemeCommand {
     'json',
     'allow-live',
     'publish',
+    'stable',
     'force',
     'development-theme-id',
   ]
