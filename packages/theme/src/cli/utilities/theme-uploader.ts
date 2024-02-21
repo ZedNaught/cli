@@ -36,6 +36,7 @@ export async function uploadTheme(
     theme,
     session,
   )
+  // The sequence of tasks is important here
   await renderTasks(jsonTasks)
   await renderTasks(otherTasks)
 
