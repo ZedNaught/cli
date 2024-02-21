@@ -11,9 +11,9 @@ import {execCLI2} from '@shopify/cli-kit/node/ruby'
 import {ensureAuthenticatedThemes} from '@shopify/cli-kit/node/session'
 import {useEmbeddedThemeCLI} from '@shopify/cli-kit/node/context/local'
 import {RenderConfirmationPromptOptions, renderConfirmationPrompt, renderTextPrompt} from '@shopify/cli-kit/node/ui'
-import {generateRandomNameForSubdirectory} from '@shopify/cli-kit/node/fs'
 import {UNPUBLISHED_THEME_ROLE} from '@shopify/cli-kit/node/themes/utils'
 import {publishTheme} from '@shopify/cli-kit/node/themes/api'
+import {getRandomName} from '@shopify/cli-kit/common/string'
 
 export default class Push extends ThemeCommand {
   static description =
@@ -115,7 +115,7 @@ export default class Push extends ThemeCommand {
       const {live, development, unpublished, path} = flags
 
       if (unpublished) {
-        const themeName = flags.theme || (await promptThemeName(path))
+        const themeName = flags.theme || (await promptThemeName())
         await developmentThemeManager.create(UNPUBLISHED_THEME_ROLE, themeName)
       }
 
@@ -167,12 +167,8 @@ export default class Push extends ThemeCommand {
   }
 }
 
-async function promptThemeName(path: string) {
-  const defaultName = await generateRandomNameForSubdirectory({
-    suffix: 'theme',
-    directory: path,
-    family: 'creative',
-  })
+async function promptThemeName() {
+  const defaultName = await getRandomName('creative')
   return renderTextPrompt({message: 'Name of the new theme', defaultValue: defaultName})
 }
 
