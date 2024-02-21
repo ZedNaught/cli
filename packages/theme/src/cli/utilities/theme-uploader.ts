@@ -13,7 +13,7 @@ interface UploadOptions {
   ignore?: string[]
   only?: string[]
 }
-type FileBatch = string[]
+type FileBatch = Checksum[]
 
 // Limits for Bulk Requests
 export const MAX_BATCH_FILE_COUNT = 10
@@ -71,22 +71,22 @@ async function getRemoteFilesToBeDeleted(
   remoteChecksums: Checksum[],
   themeFileSystem: ThemeFileSystem,
   options: UploadOptions,
-): Promise<string[]> {
+): Promise<Checksum[]> {
   const localKeys = new Set(themeFileSystem.files.keys())
   const filteredChecksums = await applyIgnoreFilters(remoteChecksums, themeFileSystem, options)
-  return filteredChecksums.filter((checksum) => !localKeys.has(checksum.key)).map((checksum) => checksum.key)
+  return filteredChecksums.filter((checksum) => !localKeys.has(checksum.key))
 }
 
-function createDeleteTasks(files: string[], themeId: number, session: AdminSession): Task[] {
+function createDeleteTasks(files: Checksum[], themeId: number, session: AdminSession): Task[] {
   return files.map((file) => ({
-    title: `Cleaning your remote theme (removing ${file})`,
+    title: `Cleaning your remote theme (removing ${file.key})`,
     task: async () => deleteFileFromRemote(themeId, file, session),
   }))
 }
 
-async function deleteFileFromRemote(themeId: number, file: string, session: AdminSession) {
-  outputInfo(`Cleaning your remote theme (removing ${file})`)
-  await deleteThemeAsset(themeId, file, session)
+async function deleteFileFromRemote(themeId: number, file: Checksum, session: AdminSession) {
+  outputInfo(`Cleaning your remote theme (removing ${file.key})`)
+  await deleteThemeAsset(themeId, file.key, session)
 }
 
 async function buildUploadTasks(
@@ -99,9 +99,8 @@ async function buildUploadTasks(
   const localChecksums = calculateLocalChecksums(themeFileSystem)
   const filteredChecksums = await applyIgnoreFilters(localChecksums, themeFileSystem, options)
   // this seems incorrect (selecting too many files)
-  const filesToUpload = (await selectUploadableFiles(remoteChecksums, filteredChecksums)).map(
-    (checksum) => checksum.key,
-  )
+  const filesToUpload = await selectUploadableFiles(remoteChecksums, filteredChecksums)
+
   await readThemeFilesFromDisk(filesToUpload, themeFileSystem)
 
   const {jsonFiles, liquidFiles, configFiles, staticAssetFiles} = partitionThemeFiles(filesToUpload)
@@ -186,11 +185,11 @@ function selectUploadableFiles(remoteChecksums: Checksum[], localCheckSums: Chec
   })
 }
 
-async function createBatches(files: string[], path: string): Promise<FileBatch[]> {
+async function createBatches(files: Checksum[], path: string): Promise<FileBatch[]> {
   const fileSizes = await Promise.all(files.map((file) => fileSize(`${path}/${file}`)))
   const batches = []
 
-  let currentBatch: string[] = []
+  let currentBatch: Checksum[] = []
   let currentBatchSize = 0
 
   files.forEach((file, index) => {
@@ -236,9 +235,9 @@ async function uploadBatch(
   themeId: number,
 ) {
   const uploadParams = batch.map((file) => ({
-    key: file,
-    value: localThemeFileSystem.files.get(file)?.value,
-    attachment: localThemeFileSystem.files.get(file)?.attachment,
+    key: file.key,
+    value: localThemeFileSystem.files.get(file.key)?.value,
+    attachment: localThemeFileSystem.files.get(file.key)?.attachment,
   }))
   const results = await bulkUploadThemeAssets(themeId, uploadParams, session)
   await retryFailures(uploadParams, results, themeId, session)
@@ -260,21 +259,22 @@ async function retryFailures(
   }
 }
 
-async function readThemeFilesFromDisk(filesToUpload: string[], themeFileSystem: ThemeFileSystem) {
+async function readThemeFilesFromDisk(filesToUpload: Checksum[], themeFileSystem: ThemeFileSystem) {
   await Promise.all(
     filesToUpload.map(async (file) => {
-      const themeAsset = themeFileSystem.files.get(file)
+      const fileKey = file.key
+      const themeAsset = themeFileSystem.files.get(fileKey)
       if (themeAsset === undefined) {
         return
       }
 
-      const fileData = await readThemeFile(themeFileSystem.root, file)
+      const fileData = await readThemeFile(themeFileSystem.root, fileKey)
       if (Buffer.isBuffer(fileData)) {
         themeAsset.attachment = fileData.toString('base64')
       } else {
         themeAsset.value = fileData
       }
-      themeFileSystem.files.set(file, themeAsset)
+      themeFileSystem.files.set(fileKey, themeAsset)
     }),
   )
 }
