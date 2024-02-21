@@ -98,14 +98,12 @@ async function buildUploadTasks(
 ): Promise<{liquidUploadTasks: Task[]; jsonUploadTasks: Task[]; configUploadTasks: Task[]; staticUploadTasks: Task[]}> {
   const localChecksums = calculateLocalChecksums(themeFileSystem)
   const filteredChecksums = await applyIgnoreFilters(localChecksums, themeFileSystem, options)
-  // this seems incorrect (selecting too many files)
   const filesToUpload = await selectUploadableFiles(remoteChecksums, filteredChecksums)
 
   await readThemeFilesFromDisk(filesToUpload, themeFileSystem)
 
   const {jsonFiles, liquidFiles, configFiles, staticAssetFiles} = partitionThemeFiles(filesToUpload)
 
-  // build batches (liquid, json, config, static)
   const liquidBatches = await createBatches(liquidFiles, options.path)
   const jsonBatches = await createBatches(jsonFiles, options.path)
   const configBatches = await createBatches(configFiles, options.path)
