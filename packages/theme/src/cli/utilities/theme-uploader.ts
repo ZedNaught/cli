@@ -5,6 +5,7 @@ import {BulkUploadResult, Checksum, Theme, ThemeFileSystem} from '@shopify/cli-k
 import {AssetParams, bulkUploadThemeAssets, deleteThemeAsset} from '@shopify/cli-kit/node/themes/api'
 import {fileSize} from '@shopify/cli-kit/node/fs'
 import {Task, renderTasks as renderTaskOriginal} from '@shopify/cli-kit/node/ui'
+import {outputInfo} from '@shopify/cli-kit/node/output'
 
 interface UploadOptions {
   path: string
@@ -64,20 +65,21 @@ async function buildDeleteTasks(
   )
   const otherFiles = [...liquidFiles, ...configFiles, ...staticAssetFiles]
 
-  const jsonTasks = jsonFiles.map((file) => ({
-    title: `Cleaning your remote theme (removing ${file})`,
-    task: async () => deleteFileFromRemote(theme.id, file, session),
-  }))
-
-  const otherTasks = otherFiles.map((file) => ({
-    title: `Cleaning your remote theme (removing ${file})`,
-    task: async () => deleteFileFromRemote(theme.id, file, session),
-  }))
+  const jsonTasks = createDeleteTasks(jsonFiles, theme.id, session)
+  const otherTasks = createDeleteTasks(otherFiles, theme.id, session)
 
   return {jsonTasks, otherTasks}
 }
 
+function createDeleteTasks(files: string[], themeId: number, session: AdminSession): Task[] {
+  return files.map((file) => ({
+    title: `Cleaning your remote theme (removing ${file})`,
+    task: async () => deleteFileFromRemote(themeId, file, session),
+  }))
+}
+
 async function deleteFileFromRemote(themeId: number, file: string, session: AdminSession) {
+  outputInfo(`Cleaning your remote theme (removing ${file})`)
   await deleteThemeAsset(themeId, file, session)
 }
 
