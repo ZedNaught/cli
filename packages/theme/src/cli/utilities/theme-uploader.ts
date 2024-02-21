@@ -96,65 +96,91 @@ async function buildUploadTasks(
   theme: Theme,
   session: AdminSession,
 ): Promise<{liquidUploadTasks: Task[]; jsonUploadTasks: Task[]; configUploadTasks: Task[]; staticUploadTasks: Task[]}> {
-  const localChecksums = calculateLocalChecksums(themeFileSystem)
-  const filteredChecksums = await applyIgnoreFilters(localChecksums, themeFileSystem, options)
-  const filesToUpload = await selectUploadableFiles(remoteChecksums, filteredChecksums)
+  const filesToUpload = await selectUploadableFiles(themeFileSystem, remoteChecksums, options)
 
   await readThemeFilesFromDisk(filesToUpload, themeFileSystem)
+  const {liquidUploadTasks, jsonUploadTasks, configUploadTasks, staticUploadTasks} = await createUploadTasks(
+    filesToUpload,
+    themeFileSystem,
+    session,
+    theme,
+  )
 
+  return {liquidUploadTasks, jsonUploadTasks, configUploadTasks, staticUploadTasks}
+}
+
+async function createUploadTasks(
+  filesToUpload: Checksum[],
+  themeFileSystem: ThemeFileSystem,
+  session: AdminSession,
+  theme: Theme,
+): Promise<{liquidUploadTasks: Task[]; jsonUploadTasks: Task[]; configUploadTasks: Task[]; staticUploadTasks: Task[]}> {
+  const totalFileCount = filesToUpload.length
   const {jsonFiles, liquidFiles, configFiles, staticAssetFiles} = partitionThemeFiles(filesToUpload)
 
-  const liquidBatches = await createBatches(liquidFiles, options.path)
-  const jsonBatches = await createBatches(jsonFiles, options.path)
-  const configBatches = await createBatches(configFiles, options.path)
-  const staticBatches = await createBatches(staticAssetFiles, options.path)
-
-  const totalFileCount = filesToUpload.length
-
-  const {tasks: liquidUploadTasks, currentFileCount: liquidCount} = createUploadTasks(
-    liquidBatches,
+  const {tasks: liquidUploadTasks, updatedFileCount: liquidCount} = await createUploadTaskForFileType(
+    liquidFiles,
     themeFileSystem,
     session,
     theme.id,
     totalFileCount,
     0,
   )
-  const {tasks: jsonUploadTasks, currentFileCount: jsonCount} = createUploadTasks(
-    jsonBatches,
+  const {tasks: jsonUploadTasks, updatedFileCount: jsonCount} = await createUploadTaskForFileType(
+    jsonFiles,
     themeFileSystem,
     session,
     theme.id,
     totalFileCount,
     liquidCount,
   )
-  const {tasks: configUploadTasks, currentFileCount: configCount} = createUploadTasks(
-    configBatches,
+  const {tasks: configUploadTasks, updatedFileCount: configCount} = await createUploadTaskForFileType(
+    configFiles,
     themeFileSystem,
     session,
     theme.id,
     totalFileCount,
     jsonCount,
   )
-  const {tasks: staticUploadTasks} = createUploadTasks(
-    staticBatches,
+  const {tasks: staticUploadTasks} = await createUploadTaskForFileType(
+    staticAssetFiles,
     themeFileSystem,
     session,
     theme.id,
     totalFileCount,
     configCount,
   )
-
   return {liquidUploadTasks, jsonUploadTasks, configUploadTasks, staticUploadTasks}
 }
 
-function createUploadTasks(
+async function createUploadTaskForFileType(
+  checksums: Checksum[],
+  themeFileSystem: ThemeFileSystem,
+  session: AdminSession,
+  themeId: number,
+  totalFileCount: number,
+  currentFileCount: number,
+): Promise<{tasks: Task[]; updatedFileCount: number}> {
+  const batches = await createBatches(checksums, themeFileSystem.root)
+  const {tasks, updatedFileCount} = await createUploadTaskForBatch(
+    batches,
+    themeFileSystem,
+    session,
+    themeId,
+    totalFileCount,
+    currentFileCount,
+  )
+  return {tasks, updatedFileCount}
+}
+
+function createUploadTaskForBatch(
   batches: FileBatch[],
   themeFileSystem: ThemeFileSystem,
   session: AdminSession,
   themeId: number,
   totalFileCount: number,
   currentFileCount: number,
-): {tasks: Task[]; currentFileCount: number} {
+): {tasks: Task[]; updatedFileCount: number} {
   let runningFileCount = currentFileCount
   const tasks = batches.map((batch) => {
     runningFileCount += batch.length
@@ -166,18 +192,24 @@ function createUploadTasks(
   })
   return {
     tasks,
-    currentFileCount: runningFileCount,
+    updatedFileCount: runningFileCount,
   }
 }
 
 // Only upload files that are not present in the remote checksums or have different checksums
-function selectUploadableFiles(remoteChecksums: Checksum[], localCheckSums: Checksum[]): Checksum[] {
+async function selectUploadableFiles(
+  themeFileSystem: ThemeFileSystem,
+  remoteChecksums: Checksum[],
+  options: UploadOptions,
+): Promise<Checksum[]> {
+  const localChecksums = calculateLocalChecksums(themeFileSystem)
+  const filteredLocalChecksums = await applyIgnoreFilters(localChecksums, themeFileSystem, options)
   const remoteChecksumsMap = new Map<string, Checksum>()
   remoteChecksums.forEach((remote) => {
     remoteChecksumsMap.set(remote.key, remote)
   })
 
-  return localCheckSums.filter((local) => {
+  return filteredLocalChecksums.filter((local) => {
     const remote = remoteChecksumsMap.get(local.key)
     return !remote || remote.checksum !== local.checksum
   })
@@ -257,6 +289,7 @@ async function retryFailures(
   }
 }
 
+// !!! extract this
 async function readThemeFilesFromDisk(filesToUpload: Checksum[], themeFileSystem: ThemeFileSystem) {
   await Promise.all(
     filesToUpload.map(async (file) => {
