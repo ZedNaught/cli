@@ -1,5 +1,5 @@
 import {checksum} from './asset-checksum.js'
-import {ThemeFileSystem, Key, ThemeAsset, Checksum} from '@shopify/cli-kit/node/themes/types'
+import {ThemeFileSystem, Key, ThemeAsset} from '@shopify/cli-kit/node/themes/types'
 import {glob, readFile, ReadOptions, fileExists, mkdir, writeFile, removeFile} from '@shopify/cli-kit/node/fs'
 import {joinPath, basename} from '@shopify/cli-kit/node/path'
 import {lookupMimeType, setMimeTypes} from '@shopify/cli-kit/node/mimes'
@@ -113,11 +113,11 @@ export function isJson(path: string) {
   return lookupMimeType(path) === 'application/json'
 }
 
-export function partitionThemeFiles(files: Checksum[]) {
-  const liquidFiles: Checksum[] = []
-  const jsonFiles: Checksum[] = []
-  const configFiles: Checksum[] = []
-  const staticAssetFiles: Checksum[] = []
+export function partitionThemeFiles(files: ThemeAsset[]) {
+  const liquidFiles: ThemeAsset[] = []
+  const jsonFiles: ThemeAsset[] = []
+  const configFiles: ThemeAsset[] = []
+  const staticAssetFiles: ThemeAsset[] = []
 
   files.forEach((file) => {
     const fileKey = file.key
@@ -133,6 +133,26 @@ export function partitionThemeFiles(files: Checksum[]) {
   })
 
   return {liquidFiles, jsonFiles, configFiles, staticAssetFiles}
+}
+
+export async function readThemeFilesFromDisk(filesToRead: ThemeAsset[], themeFileSystem: ThemeFileSystem) {
+  await Promise.all(
+    filesToRead.map(async (file) => {
+      const fileKey = file.key
+      const themeAsset = themeFileSystem.files.get(fileKey)
+      if (themeAsset === undefined) {
+        return
+      }
+
+      const fileData = await readThemeFile(themeFileSystem.root, fileKey)
+      if (Buffer.isBuffer(fileData)) {
+        themeAsset.attachment = fileData.toString('base64')
+      } else {
+        themeAsset.value = fileData
+      }
+      themeFileSystem.files.set(fileKey, themeAsset)
+    }),
+  )
 }
 
 export function isTextFile(path: string) {

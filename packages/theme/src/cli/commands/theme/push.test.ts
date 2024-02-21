@@ -27,27 +27,27 @@ describe('Push', () => {
 
   describe('run with CLI 3 implementation', () => {
     test('should pass call the CLI 3 command', async () => {
-      // given
+      // Given
       const theme = buildTheme({id: 1, name: 'Theme', role: 'development'})!
       vi.mocked(findOrSelectTheme).mockResolvedValue(theme)
 
-      // when
+      // When
       await runPushCommand([], path, adminSession)
 
-      // then
+      // Then
       expect(execCLI2).not.toHaveBeenCalled()
       expect(push).toHaveBeenCalled()
     })
 
     test('should pass theme selection flags to FindOrSelectTheme', async () => {
-      // given
+      // Given
       const theme = buildTheme({id: 1, name: 'Theme', role: 'development'})!
       vi.mocked(findOrSelectTheme).mockResolvedValue(theme)
 
-      // when
+      // When
       await runPushCommand(['--live', '--development', '--unpublished', '-t', '1'], path, adminSession)
 
-      // then
+      // Then
       expect(findOrSelectTheme).toHaveBeenCalledWith(adminSession, {
         header: 'Select a theme to open',
         filter: {
@@ -60,98 +60,98 @@ describe('Push', () => {
     })
 
     test('should call create with an unpublished role if unpublished flag is provided', async () => {
-      // given
+      // Given
       const theme = buildTheme({id: 1, name: 'Theme', role: 'development'})!
       vi.mocked(findOrSelectTheme).mockResolvedValue(theme)
 
-      // when
+      // When
       await runPushCommand(['--unpublished', '--theme', 'test_theme'], path, adminSession)
 
-      // then
+      // Then
       expect(DevelopmentThemeManager.prototype.create).toHaveBeenCalledWith('unpublished', 'test_theme')
     })
 
     test("should render confirmation prompt if 'allow-live' flag is not provided and selected theme role is live", async () => {
-      // given
+      // Given
       const theme = buildTheme({id: 1, name: 'Theme', role: 'live'})!
       vi.mocked(findOrSelectTheme).mockResolvedValue(theme)
       vi.mocked(renderConfirmationPrompt).mockResolvedValue(true)
 
-      // when
+      // When
       await runPushCommand([], path, adminSession)
 
-      // then
+      // Then
       expect(renderConfirmationPrompt).toHaveBeenCalled()
     })
 
     test('should render text prompt if unpublished flag is provided and theme flag is not provided', async () => {
-      // given
+      // Given
       const theme = buildTheme({id: 1, name: 'Theme', role: 'development'})!
       vi.mocked(renderTextPrompt).mockResolvedValue('test_name')
       vi.mocked(findOrSelectTheme).mockResolvedValue(theme)
 
-      // when
+      // When
       await runPushCommand(['--unpublished'], path, adminSession)
 
-      // then
+      // Then
       expect(renderTextPrompt).toHaveBeenCalled()
       expect(DevelopmentThemeManager.prototype.create).toHaveBeenCalledWith('unpublished', 'test_name')
     })
 
     test('should call publishTheme if publish flag is provided', async () => {
-      // given
+      // Given
       const theme = buildTheme({id: 1, name: 'Theme', role: 'development'})!
       vi.mocked(findOrSelectTheme).mockResolvedValue(theme)
       vi.mocked(publishTheme).mockResolvedValue(theme)
 
-      // when
+      // When
       await runPushCommand(['--publish'], path, adminSession)
 
-      // then
+      // Then
       expect(publishTheme).toHaveBeenCalledWith(theme.id, adminSession)
     })
   })
 
   describe('run with CLI 2 implementation', () => {
     test('should pass development theme from local storage to CLI 2', async () => {
-      // given
+      // Given
       const theme = buildTheme({id: 1, name: 'Theme', role: 'development'})!
       await run([], theme)
 
-      // then
+      // Then
       expect(DevelopmentThemeManager.prototype.findOrCreate).not.toHaveBeenCalled()
       expect(DevelopmentThemeManager.prototype.fetch).toHaveBeenCalledOnce()
       expectCLI2ToHaveBeenCalledWith(`theme push ${path} --stable --development-theme-id ${theme.id}`)
     })
 
     test('should pass theme and development theme from local storage to CLI 2', async () => {
-      // given
+      // Given
       const themeId = 2
       const theme = buildTheme({id: 3, name: 'Theme', role: 'development'})!
       await run([`--theme=${themeId}`], theme)
 
-      // then
+      // Then
       expectCLI2ToHaveBeenCalledWith(
         `theme push ${path} --theme ${themeId} --stable --development-theme-id ${theme.id}`,
       )
     })
 
     test('should not pass development theme to CLI 2 if local storage is empty', async () => {
-      // when
+      // When
       await run([])
 
-      // then
+      // Then
       expect(DevelopmentThemeManager.prototype.findOrCreate).not.toHaveBeenCalled()
       expect(DevelopmentThemeManager.prototype.fetch).toHaveBeenCalledOnce()
       expectCLI2ToHaveBeenCalledWith(`theme push ${path} --stable`)
     })
 
     test('should pass theme and development theme to CLI 2', async () => {
-      // given
+      // Given
       const theme = buildTheme({id: 4, name: 'Theme', role: 'development'})!
       await run(['--development'], theme)
 
-      // then
+      // Then
       expect(DevelopmentThemeManager.prototype.findOrCreate).toHaveBeenCalledOnce()
       expect(DevelopmentThemeManager.prototype.fetch).not.toHaveBeenCalled()
       expectCLI2ToHaveBeenCalledWith(

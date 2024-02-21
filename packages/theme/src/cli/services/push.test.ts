@@ -16,20 +16,20 @@ describe('push', () => {
   const adminSession = {token: '', storeFqdn: ''}
   const theme = buildTheme({id: 1, name: 'Theme', role: 'development'})!
 
-  test('should raise an error if the provided path is not a valid theme directory', async ({expect}) => {
-    // GIVEN
+  test('Should raise an error if the provided path is not a valid theme directory', async ({expect}) => {
+    // Given
     vi.mocked(resolvePath).mockReturnValue('/invalid/path')
     vi.mocked(hasRequiredThemeDirectories).mockResolvedValue(false)
 
-    // WHEN
+    // When
     const pushPromise = push(theme, adminSession, {path: '/invalid/path'})
 
-    // THEN
+    // Then
     await expect(pushPromise).rejects.toThrow(new Error('Invalid theme directory: /invalid/path'))
   })
 
-  test('should use the current working directory if no path is provided', async ({expect}) => {
-    // GIVEN
+  test('Should use the current working directory if no path is provided', async ({expect}) => {
+    // Given
     const fileSystem = {
       root: 'tmp',
       files: new Map([]),
@@ -39,35 +39,35 @@ describe('push', () => {
     vi.mocked(mountThemeFileSystem).mockResolvedValue(fileSystem)
     vi.mocked(fetchChecksums).mockResolvedValue([])
 
-    // WHEN
+    // When
     await push(theme, adminSession, {})
 
-    // THEN
+    // Then
     expect(uploadTheme).toBeCalledWith(theme, adminSession, [], fileSystem, {path: '/current/working/directory'})
   })
 
   test('should use the provided path if it is provided', async ({expect}) => {
-    // GIVEN
+    // Given
     vi.mocked(resolvePath).mockReturnValue('/provided/path')
     vi.mocked(hasRequiredThemeDirectories).mockResolvedValue(true)
     vi.mocked(fetchChecksums).mockResolvedValue([])
 
-    // WHEN
+    // When
     await push(theme, adminSession, {path: '/provided/path'})
 
-    // THEN
+    // Then
     expect(hasRequiredThemeDirectories).toBeCalledWith('/provided/path')
   })
 
   test('should throw an error if the working directory does not have the required structure', async ({expect}) => {
-    // GIVEN
+    // Given
     vi.mocked(cwd).mockReturnValue('/current/working/directory')
     vi.mocked(hasRequiredThemeDirectories).mockResolvedValue(false)
 
-    // WHEN
+    // When
     const pushPromise = push(theme, adminSession, {})
 
-    // THEN
+    // Then
     await expect(pushPromise).rejects.toThrow(new Error('Invalid theme directory: /current/working/directory'))
   })
 })

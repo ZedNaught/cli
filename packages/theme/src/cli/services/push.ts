@@ -14,7 +14,6 @@ interface PushOptions {
 export async function push(theme: Theme, session: AdminSession, options: PushOptions) {
   const {path} = options
   const workingDirectory = path ? resolvePath(path) : cwd()
-  // check if directory does not have required structure
   if (!(await hasRequiredThemeDirectories(workingDirectory))) {
     throw new Error(`Invalid theme directory: ${workingDirectory}`)
   }

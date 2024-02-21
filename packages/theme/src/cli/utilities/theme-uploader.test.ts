@@ -364,7 +364,6 @@ describe('theme-uploader', () => {
     )
   })
 
-  // should include image data as base64 encoded attachment
   test('should include image data as base64 encoded attachment', async () => {
     // Given
     const remoteChecksums: Checksum[] = []

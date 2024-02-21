@@ -1,4 +1,4 @@
-import {partitionThemeFiles, readThemeFile} from './theme-fs.js'
+import {partitionThemeFiles, readThemeFilesFromDisk} from './theme-fs.js'
 import {applyIgnoreFilters} from './asset-ignore.js'
 import {AdminSession} from '@shopify/cli-kit/node/session'
 import {BulkUploadResult, Checksum, Theme, ThemeFileSystem} from '@shopify/cli-kit/node/themes/types'
@@ -200,7 +200,6 @@ function createUploadTaskForBatch(
   }
 }
 
-// Only upload files that are not present in the remote checksums or have different checksums
 async function selectUploadableFiles(
   themeFileSystem: ThemeFileSystem,
   remoteChecksums: Checksum[],
@@ -230,7 +229,6 @@ async function createBatches(files: Checksum[], path: string): Promise<FileBatch
     const hasEnoughItems = currentBatch.length >= MAX_BATCH_FILE_COUNT
     const hasEnoughByteSize = currentBatchSize >= MAX_BATCH_BYTESIZE
 
-    // If the current batch has reached the item or size limit, push it to the batches array
     if (hasEnoughItems || hasEnoughByteSize) {
       batches.push(currentBatch)
       currentBatch = []
@@ -241,7 +239,6 @@ async function createBatches(files: Checksum[], path: string): Promise<FileBatch
     currentBatchSize += fileSizes[index] ?? 0
   })
 
-  // Push remainder of currentBatch if it's not empty
   if (currentBatch.length > 0) {
     batches.push(currentBatch)
   }
@@ -291,27 +288,6 @@ async function retryFailures(
     const results = await bulkUploadThemeAssets(themeId, failedUploadParams, session)
     await retryFailures(failedUploadParams, results, themeId, session, count + 1)
   }
-}
-
-// !!! extract this
-async function readThemeFilesFromDisk(filesToUpload: Checksum[], themeFileSystem: ThemeFileSystem) {
-  await Promise.all(
-    filesToUpload.map(async (file) => {
-      const fileKey = file.key
-      const themeAsset = themeFileSystem.files.get(fileKey)
-      if (themeAsset === undefined) {
-        return
-      }
-
-      const fileData = await readThemeFile(themeFileSystem.root, fileKey)
-      if (Buffer.isBuffer(fileData)) {
-        themeAsset.attachment = fileData.toString('base64')
-      } else {
-        themeAsset.value = fileData
-      }
-      themeFileSystem.files.set(fileKey, themeAsset)
-    }),
-  )
 }
 
 async function renderTasks(tasks: Task[]) {
