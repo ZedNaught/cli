@@ -161,6 +161,10 @@ async function createUploadTaskForFileType(
   totalFileCount: number,
   currentFileCount: number,
 ): Promise<{tasks: Task[]; updatedFileCount: number}> {
+  if (checksums.length === 0) {
+    return {tasks: [], updatedFileCount: currentFileCount}
+  }
+
   const batches = await createBatches(checksums, themeFileSystem.root)
   const {tasks, updatedFileCount} = await createUploadTaskForBatch(
     batches,
@@ -216,7 +220,7 @@ async function selectUploadableFiles(
 }
 
 async function createBatches(files: Checksum[], path: string): Promise<FileBatch[]> {
-  const fileSizes = await Promise.all(files.map((file) => fileSize(`${path}/${file}`)))
+  const fileSizes = await Promise.all(files.map((file) => fileSize(`${path}/${file.key}`)))
   const batches = []
 
   let currentBatch: Checksum[] = []
