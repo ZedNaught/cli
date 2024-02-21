@@ -28,14 +28,12 @@ export async function uploadTheme(
   themeFileSystem: ThemeFileSystem,
   options: UploadOptions,
 ) {
-  const {jsonTasks, otherTasks} = await buildDeleteTasks(remoteChecksums, themeFileSystem, options, theme, session)
-  const {liquidUploadTasks, jsonUploadTasks, configUploadTasks, staticUploadTasks} = await buildUploadTasks(
-    remoteChecksums,
-    themeFileSystem,
-    options,
-    theme,
-    session,
-  )
+  const deleteTasks = await buildDeleteTasks(remoteChecksums, themeFileSystem, options, theme, session)
+  const uploadTasks = await buildUploadTasks(remoteChecksums, themeFileSystem, options, theme, session)
+
+  const {jsonTasks, otherTasks} = deleteTasks
+  const {liquidUploadTasks, jsonUploadTasks, configUploadTasks, staticUploadTasks} = uploadTasks
+
   // The sequence of tasks is important here
   await renderTasks(jsonTasks)
   await renderTasks(otherTasks)
