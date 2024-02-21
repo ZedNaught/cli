@@ -215,39 +215,47 @@ describe('theme-fs', () => {
   describe('partitionThemeFiles', () => {
     test('should partition theme files correctly', () => {
       // Given
-      const files = [
-        'assets/base.css',
-        'assets/base.css.liquid',
-        'assets/sparkle.gif',
-        'layout/password.liquid',
-        'layout/theme.liquid',
-        'locales/en.default.json',
-        'templates/404.json',
-        'config/settings_schema.json',
-        'config/settings_data.json',
-        'sections/announcement-bar.liquid',
-        'snippets/language-localization.liquid',
+      const files: Checksum[] = [
+        {key: 'assets/base.css', checksum: '1'},
+        {key: 'assets/base.css.liquid', checksum: '2'},
+        {key: 'assets/sparkle.gif', checksum: '3'},
+        {key: 'layout/password.liquid', checksum: '4'},
+        {key: 'layout/theme.liquid', checksum: '5'},
+        {key: 'locales/en.default.json', checksum: '6'},
+        {key: 'templates/404.json', checksum: '7'},
+        {key: 'config/settings_schema.json', checksum: '8'},
+        {key: 'config/settings_data.json', checksum: '9'},
+        {key: 'sections/announcement-bar.liquid', checksum: '10'},
+        {key: 'snippets/language-localization.liquid', checksum: '11'},
       ]
-
       // When
       const {liquidFiles, jsonFiles, configFiles, staticAssetFiles} = partitionThemeFiles(files)
 
       // Then
       expect(liquidFiles).toEqual([
-        'assets/base.css.liquid',
-        'layout/password.liquid',
-        'layout/theme.liquid',
-        'sections/announcement-bar.liquid',
-        'snippets/language-localization.liquid',
+        {key: 'assets/base.css.liquid', checksum: '2'},
+        {key: 'layout/password.liquid', checksum: '4'},
+        {key: 'layout/theme.liquid', checksum: '5'},
+        {key: 'sections/announcement-bar.liquid', checksum: '10'},
+        {key: 'snippets/language-localization.liquid', checksum: '11'},
       ])
-      expect(jsonFiles).toEqual(['locales/en.default.json', 'templates/404.json'])
-      expect(configFiles).toEqual(['config/settings_schema.json', 'config/settings_data.json'])
-      expect(staticAssetFiles).toEqual(['assets/base.css', 'assets/sparkle.gif'])
+      expect(jsonFiles).toEqual([
+        {key: 'locales/en.default.json', checksum: '6'},
+        {key: 'templates/404.json', checksum: '7'},
+      ])
+      expect(configFiles).toEqual([
+        {key: 'config/settings_schema.json', checksum: '8'},
+        {key: 'config/settings_data.json', checksum: '9'},
+      ])
+      expect(staticAssetFiles).toEqual([
+        {key: 'assets/base.css', checksum: '1'},
+        {key: 'assets/sparkle.gif', checksum: '3'},
+      ])
     })
 
     test('should handle empty file array', () => {
       // Given
-      const files: string[] = []
+      const files: Checksum[] = []
 
       // When
       const {liquidFiles, jsonFiles, configFiles, staticAssetFiles} = partitionThemeFiles(files)

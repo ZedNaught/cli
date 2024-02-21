@@ -1,5 +1,5 @@
 import {checksum} from './asset-checksum.js'
-import {ThemeFileSystem, Key, ThemeAsset} from '@shopify/cli-kit/node/themes/types'
+import {ThemeFileSystem, Key, ThemeAsset, Checksum} from '@shopify/cli-kit/node/themes/types'
 import {glob, readFile, ReadOptions, fileExists, mkdir, writeFile, removeFile} from '@shopify/cli-kit/node/fs'
 import {joinPath, basename} from '@shopify/cli-kit/node/path'
 import {lookupMimeType, setMimeTypes} from '@shopify/cli-kit/node/mimes'
@@ -113,23 +113,25 @@ export function isJson(path: string) {
   return lookupMimeType(path) === 'application/json'
 }
 
-export function partitionThemeFiles(files: string[]) {
-  const liquidFiles: string[] = []
-  const jsonFiles: string[] = []
-  const configFiles: string[] = []
-  const staticAssetFiles: string[] = []
+export function partitionThemeFiles(files: Checksum[]) {
+  const liquidFiles: Checksum[] = []
+  const jsonFiles: Checksum[] = []
+  const configFiles: Checksum[] = []
+  const staticAssetFiles: Checksum[] = []
 
-  files.forEach((key) => {
-    if (THEME_PARTITION_REGEX.liquidRegex.test(key)) {
-      liquidFiles.push(key)
-    } else if (THEME_PARTITION_REGEX.configRegex.test(key)) {
-      configFiles.push(key)
-    } else if (THEME_PARTITION_REGEX.jsonRegex.test(key)) {
-      jsonFiles.push(key)
-    } else if (THEME_PARTITION_REGEX.staticAssetRegex.test(key)) {
-      staticAssetFiles.push(key)
+  files.forEach((file) => {
+    const fileKey = file.key
+    if (THEME_PARTITION_REGEX.liquidRegex.test(fileKey)) {
+      liquidFiles.push(file)
+    } else if (THEME_PARTITION_REGEX.configRegex.test(fileKey)) {
+      configFiles.push(file)
+    } else if (THEME_PARTITION_REGEX.jsonRegex.test(fileKey)) {
+      jsonFiles.push(file)
+    } else if (THEME_PARTITION_REGEX.staticAssetRegex.test(fileKey)) {
+      staticAssetFiles.push(file)
     }
   })
+
   return {liquidFiles, jsonFiles, configFiles, staticAssetFiles}
 }
 
