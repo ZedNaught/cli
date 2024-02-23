@@ -5,7 +5,7 @@ import {BulkUploadResult, Checksum, Theme, ThemeFileSystem} from '@shopify/cli-k
 import {AssetParams, bulkUploadThemeAssets, deleteThemeAsset} from '@shopify/cli-kit/node/themes/api'
 import {fileSize} from '@shopify/cli-kit/node/fs'
 import {Task, renderTasks as renderTaskOriginal} from '@shopify/cli-kit/node/ui'
-import {outputInfo} from '@shopify/cli-kit/node/output'
+import {outputDebug} from '@shopify/cli-kit/node/output'
 
 interface UploadOptions {
   path: string
@@ -74,7 +74,9 @@ async function getRemoteFilesToBeDeleted(
 ): Promise<Checksum[]> {
   const localKeys = new Set(themeFileSystem.files.keys())
   const filteredChecksums = await applyIgnoreFilters(remoteChecksums, themeFileSystem, options)
-  return filteredChecksums.filter((checksum) => !localKeys.has(checksum.key))
+  const filesToBeDeleted = filteredChecksums.filter((checksum) => !localKeys.has(checksum.key))
+  outputDebug(`Files to be deleted: ${filesToBeDeleted.map((file) => file.key).join(', ')}`)
+  return filesToBeDeleted
 }
 
 function createDeleteTasks(files: Checksum[], themeId: number, session: AdminSession): Task[] {
@@ -85,7 +87,7 @@ function createDeleteTasks(files: Checksum[], themeId: number, session: AdminSes
 }
 
 async function deleteFileFromRemote(themeId: number, file: Checksum, session: AdminSession) {
-  outputInfo(`Cleaning your remote theme (removing ${file.key})`)
+  outputDebug(`Cleaning your remote theme (removing ${file.key})`)
   await deleteThemeAsset(themeId, file.key, session)
 }
 
@@ -115,6 +117,7 @@ async function createUploadTasks(
   session: AdminSession,
   theme: Theme,
 ): Promise<{liquidUploadTasks: Task[]; jsonUploadTasks: Task[]; configUploadTasks: Task[]; staticUploadTasks: Task[]}> {
+  outputDebug(`Preparing ${filesToUpload.length} to be uploaded to remote theme`)
   const totalFileCount = filesToUpload.length
   const {jsonFiles, liquidFiles, configFiles, staticAssetFiles} = partitionThemeFiles(filesToUpload)
 
@@ -212,10 +215,12 @@ async function selectUploadableFiles(
     remoteChecksumsMap.set(remote.key, remote)
   })
 
-  return filteredLocalChecksums.filter((local) => {
+  const filesToUpload = filteredLocalChecksums.filter((local) => {
     const remote = remoteChecksumsMap.get(local.key)
     return !remote || remote.checksum !== local.checksum
   })
+  outputDebug(`Files to be uploaded: ${filesToUpload.map((file) => file.key).join(', ')}`)
+  return filesToUpload
 }
 
 async function createBatches(files: Checksum[], path: string): Promise<FileBatch[]> {
@@ -274,6 +279,7 @@ async function uploadBatch(
       ...(attachment && {attachment}),
     }
   })
+  outputDebug(`Uploading batch containing the following files: ${batch.map((file) => file.key).join(', ')}`)
   const results = await bulkUploadThemeAssets(themeId, uploadParams, session)
   await retryFailures(uploadParams, results, themeId, session)
 }
@@ -286,9 +292,21 @@ async function retryFailures(
   count = 0,
 ) {
   const succesfulUploads = results.filter((result) => result.success).map((result) => result.key)
-  if (succesfulUploads.length < uploadParams.length && count < MAX_UPLOAD_RETRY_COUNT) {
+  const failedUploadsExist = succesfulUploads.length < uploadParams.length
+  if (failedUploadsExist) {
     const succesfulUploadsSet = new Set(succesfulUploads)
     const failedUploadParams = uploadParams.filter((param) => !succesfulUploadsSet.has(param.key))
+
+    if (count === MAX_UPLOAD_RETRY_COUNT) {
+      outputDebug(
+        `Max retry count reached for the following files: ${failedUploadParams.map((param) => param.key).join(', ')}`,
+      )
+      return
+    }
+
+    outputDebug(`The following files failed to upload: ${failedUploadParams.map((param) => param.key).join(', ')}`)
+    outputDebug(`Retry Attempt ${count + 1}/${MAX_UPLOAD_RETRY_COUNT}`)
+
     const results = await bulkUploadThemeAssets(themeId, failedUploadParams, session)
     await retryFailures(failedUploadParams, results, themeId, session, count + 1)
   }
