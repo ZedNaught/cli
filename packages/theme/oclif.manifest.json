@@ -1251,6 +1251,7 @@
         "json",
         "allow-live",
         "publish",
+        "stable",
         "force",
         "development-theme-id"
       ],
