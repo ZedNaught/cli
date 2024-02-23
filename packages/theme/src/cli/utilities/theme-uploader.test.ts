@@ -1,29 +1,22 @@
 import {MAX_BATCH_BYTESIZE, MAX_BATCH_FILE_COUNT, MAX_UPLOAD_RETRY_COUNT, uploadTheme} from './theme-uploader.js'
-import {readThemeFile} from './theme-fs.js'
+import {readThemeFilesFromDisk} from './theme-fs.js'
 import {fileSize} from '@shopify/cli-kit/node/fs'
 import {bulkUploadThemeAssets, deleteThemeAsset} from '@shopify/cli-kit/node/themes/api'
 import {BulkUploadResult, Checksum, Key, ThemeAsset, ThemeFileSystem} from '@shopify/cli-kit/node/themes/types'
 import {beforeEach, describe, expect, test, vi} from 'vitest'
 import {AdminSession} from '@shopify/cli-kit/node/session'
-import {lookupMimeType} from '@shopify/cli-kit/node/mimes'
 
 vi.mock('@shopify/cli-kit/node/themes/api')
 vi.mock('@shopify/cli-kit/node/fs')
 
 vi.mock('./theme-fs.js', async (realImport) => {
   const realModule = await realImport<typeof import('./theme-fs.js')>()
-  const mockModule = {readThemeFile: vi.fn()}
+  const mockModule = {readThemeFilesFromDisk: vi.fn()}
 
   return {...realModule, ...mockModule}
 })
 
 beforeEach(() => {
-  vi.mocked(readThemeFile).mockImplementation(async (_root, path) => {
-    if (lookupMimeType(path).startsWith('image')) {
-      return Buffer.from('123', 'utf-8')
-    }
-    return path
-  })
   vi.mocked(bulkUploadThemeAssets).mockImplementation(
     async (
       _id: number,
@@ -114,11 +107,9 @@ describe('theme-uploader', () => {
       [
         {
           key: 'assets/new.liquid',
-          value: 'assets/new.liquid',
         },
         {
           key: 'assets/newer.liquid',
-          value: 'assets/newer.liquid',
         },
       ],
       adminSession,
@@ -134,8 +125,8 @@ describe('theme-uploader', () => {
     const themeFileSystem = {
       root: 'tmp',
       files: new Map([
-        ['assets/matching.liquid', {checksum: '1', value: 'fizzbuzz'}],
-        ['assets/conflicting.liquid', {checksum: '3', value: 'buzzbazz'}],
+        ['assets/matching.liquid', {checksum: '1'}],
+        ['assets/conflicting.liquid', {checksum: '3'}],
       ]),
     } as ThemeFileSystem
 
@@ -149,7 +140,6 @@ describe('theme-uploader', () => {
       [
         {
           key: 'assets/conflicting.liquid',
-          value: 'assets/conflicting.liquid',
         },
       ],
       adminSession,
@@ -181,14 +171,10 @@ describe('theme-uploader', () => {
       remoteTheme.id,
       [
         {
-          attachment: undefined,
           key: 'assets/liquid.liquid',
-          value: 'assets/liquid.liquid',
         },
         {
-          attachment: undefined,
           key: 'templates/index.liquid',
-          value: 'templates/index.liquid',
         },
       ],
       adminSession,
@@ -198,11 +184,9 @@ describe('theme-uploader', () => {
       [
         {
           key: 'config/settings_data.json',
-          value: 'config/settings_data.json',
         },
         {
           key: 'config/settings_schema.json',
-          value: 'config/settings_schema.json',
         },
       ],
       adminSession,
@@ -211,9 +195,7 @@ describe('theme-uploader', () => {
       remoteTheme.id,
       [
         {
-          attachment: Buffer.from('123', 'utf-8').toString('base64'),
           key: 'assets/image.png',
-          value: undefined,
         },
       ],
       adminSession,
@@ -223,11 +205,9 @@ describe('theme-uploader', () => {
       [
         {
           key: 'sections/header-group.json',
-          value: 'sections/header-group.json',
         },
         {
           key: 'templates/product.json',
-          value: 'templates/product.json',
         },
       ],
       adminSession,
@@ -291,9 +271,14 @@ describe('theme-uploader', () => {
 
     // When
     await uploadTheme(remoteTheme, adminSession, remoteChecksums, themeFileSystem, uploadOptions)
-
     // Then
-    expect(readThemeFile).toHaveBeenCalledTimes(2)
+    expect(readThemeFilesFromDisk).toHaveBeenCalledWith(
+      [
+        {checksum: '2', key: 'assets/new.liquid'},
+        {checksum: '3', key: 'assets/newer.liquid'},
+      ],
+      themeFileSystem,
+    )
   })
 
   test('should retry failed uploads', async () => {
@@ -342,11 +327,9 @@ describe('theme-uploader', () => {
       [
         {
           key: 'assets/new.liquid',
-          value: 'assets/new.liquid',
         },
         {
           key: 'assets/newer.liquid',
-          value: 'assets/newer.liquid',
         },
       ],
       adminSession,
@@ -357,31 +340,6 @@ describe('theme-uploader', () => {
       [
         {
           key: 'assets/newer.liquid',
-          value: 'assets/newer.liquid',
-        },
-      ],
-      adminSession,
-    )
-  })
-
-  test('should include image data as base64 encoded attachment', async () => {
-    // Given
-    const remoteChecksums: Checksum[] = []
-    const themeFileSystem = {
-      root: 'tmp',
-      files: new Map([['assets/image.png', {key: 'assets/image.png', checksum: '1'}]]),
-    } as ThemeFileSystem
-
-    // When
-    await uploadTheme(remoteTheme, adminSession, remoteChecksums, themeFileSystem, uploadOptions)
-
-    // Then
-    expect(bulkUploadThemeAssets).toHaveBeenCalledWith(
-      remoteTheme.id,
-      [
-        {
-          attachment: Buffer.from('123', 'utf-8').toString('base64'),
-          key: 'assets/image.png',
         },
       ],
       adminSession,
@@ -416,7 +374,6 @@ describe('theme-uploader', () => {
       [
         {
           key: 'assets/keepme.liquid',
-          value: 'assets/keepme.liquid',
         },
       ],
       adminSession,
@@ -452,7 +409,6 @@ describe('theme-uploader', () => {
       [
         {
           key: 'assets/uploadme.liquid',
-          value: 'assets/uploadme.liquid',
         },
       ],
       adminSession,

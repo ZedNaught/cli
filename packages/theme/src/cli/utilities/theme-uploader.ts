@@ -265,11 +265,15 @@ async function uploadBatch(
   session: AdminSession,
   themeId: number,
 ) {
-  const uploadParams = batch.map((file) => ({
-    key: file.key,
-    value: localThemeFileSystem.files.get(file.key)?.value,
-    attachment: localThemeFileSystem.files.get(file.key)?.attachment,
-  }))
+  const uploadParams = batch.map((file) => {
+    const value = localThemeFileSystem.files.get(file.key)?.value
+    const attachment = localThemeFileSystem.files.get(file.key)?.attachment
+    return {
+      key: file.key,
+      ...(value && {value}),
+      ...(attachment && {attachment}),
+    }
+  })
   const results = await bulkUploadThemeAssets(themeId, uploadParams, session)
   await retryFailures(uploadParams, results, themeId, session)
 }
