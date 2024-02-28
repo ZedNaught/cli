@@ -87,6 +87,11 @@ export default class Dev extends ThemeCommand {
       env: 'SHOPIFY_FLAG_OPEN',
       default: false,
     }),
+    beta: Flags.boolean({
+      hidden: true,
+      description: 'Performs the dev command by relying on the new implementation.',
+      env: 'SHOPIFY_FLAG_BETA',
+    }),
   }
 
   static cli2Flags = [
@@ -128,6 +133,10 @@ export default class Dev extends ThemeCommand {
       const overwriteJson = flags['theme-editor-sync'] && theme.createdAtRuntime
 
       flags = {...flags, theme: theme.id.toString(), 'overwrite-json': overwriteJson}
+    }
+
+    if (flags.beta) {
+      return
     }
 
     const flagsToPass = this.passThroughFlags(flags, {allowedFlags: Dev.cli2Flags})
