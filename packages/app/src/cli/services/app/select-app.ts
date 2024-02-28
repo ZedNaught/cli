@@ -14,7 +14,9 @@ export async function selectApp(): Promise<OrganizationApp> {
   const org = await selectOrganizationPrompt(orgs)
   const {apps, hasMorePages} = await developerPlatformClient.appsForOrg(org.id)
   const selectedAppApiKey = await selectAppPrompt(apps, hasMorePages, org.id, {developerPlatformClient})
+  console.log("BEFORE")
   const fullSelectedApp = await developerPlatformClient.appFromId(selectedAppApiKey)
+  console.log("AFTER")
   return fullSelectedApp!
 }
 

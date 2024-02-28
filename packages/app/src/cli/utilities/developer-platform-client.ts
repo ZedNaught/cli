@@ -1,4 +1,5 @@
 import {PartnersClient} from './developer-platform-client/partners-client.js'
+import {ShopifyDevelopersClient} from './developer-platform-client/shopify-developers-client.js'
 import {PartnersSession} from '../../cli/services/context/partner-account-info.js'
 import {MinimalOrganizationApp, Organization, OrganizationApp, OrganizationStore} from '../models/organization.js'
 import {ExtensionSpecification} from '../models/extensions/specification.js'
@@ -11,13 +12,18 @@ import {
   GenerateSignedUploadUrlVariables,
 } from '../api/graphql/generate_signed_upload_url.js'
 import {FunctionUploadUrlGenerateResponse} from '@shopify/cli-kit/node/api/partners'
+import {isTruthy} from '@shopify/cli-kit/node/context/utilities'
 
 export type Paginateable<T> = T & {
   hasMorePages: boolean
 }
 
 export function selectDeveloperPlatformClient(): DeveloperPlatformClient {
-  return new PartnersClient()
+  if (isTruthy(process.env.USE_SHOPIFY_DEVELOPERS_CLIENT)) {
+    return new ShopifyDevelopersClient()
+  } else {
+    return new PartnersClient()
+  }
 }
 
 export interface CreateAppOptions {
