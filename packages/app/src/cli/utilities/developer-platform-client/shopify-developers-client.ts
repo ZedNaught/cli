@@ -1,8 +1,8 @@
 import {CreateAppMutation, CreateAppMutationVariables, CreateAppMutationSchema} from './shopify-developers-client/graphql/create-app.js'
 import {ActiveAppReleaseQuery, ActiveAppReleaseQueryVariables, ActiveAppReleaseQuerySchema} from './shopify-developers-client/graphql/active-app-release.js'
-import {SpecificationsQuery, SpecificationsQueryVariables, SpecificationsQuerySchema} from './shopify-developers-client/graphql/specifications.js'
+// import {SpecificationsQuery, SpecificationsQueryVariables, SpecificationsQuerySchema} from './shopify-developers-client/graphql/specifications.js'
 import {
-  ExtensionSpecificationsQuerySchema,
+  // ExtensionSpecificationsQuerySchema,
   FlattenedRemoteSpecification
 } from '../../api/graphql/extension_specifications.js'
 import {loadLocalExtensionsSpecifications} from '../../models/extensions/load-specifications.js'
@@ -73,7 +73,7 @@ export class ShopifyDevelopersClient implements DeveloperPlatformClient {
   }
 
   async appFromId(_appId: string): Promise<OrganizationApp | undefined> {
-    throw new AbortError('Not implemented: appFromId')
+    throw new BugError('Not implemented: appFromId')
   }
 
   async organizations(): Promise<Organization[]> {
@@ -88,7 +88,7 @@ export class ShopifyDevelopersClient implements DeveloperPlatformClient {
   async orgFromId(orgId: string): Promise<Organization> {
     if (orgId === '1') return ORG1
 
-    throw new AbortError(`Cannot fetch organization with id ${orgId}`)
+    throw new BugError(`Cannot fetch organization with id ${orgId}`)
   }
 
   async orgAndApps(orgId: string): Promise<Paginateable<{organization: Organization; apps: MinimalOrganizationApp[]}>> {
@@ -99,7 +99,7 @@ export class ShopifyDevelopersClient implements DeveloperPlatformClient {
         hasMorePages: false,
       }
     } else {
-      throw new AbortError(`Cannot fetch organization with id ${orgId}`)
+      throw new BugError(`Cannot fetch organization with id ${orgId}`)
     }
   }
 
@@ -158,7 +158,7 @@ export class ShopifyDevelopersClient implements DeveloperPlatformClient {
   }
 
   async appExtensionRegistrations(_appId: string): Promise<AllAppExtensionRegistrationsQuerySchema> {
-    throw new AbortError('Not implemented: appExtensionRegistrations')
+    throw new BugError('Not implemented: appExtensionRegistrations')
   }
 
   async activeAppVersion(appId: string, orgId: string): Promise<ActiveAppVersionQuerySchema> {
@@ -169,19 +169,12 @@ export class ShopifyDevelopersClient implements DeveloperPlatformClient {
       app: {
         activeAppVersion: {
           appModuleVersions: result.app.activeRelease.version.modules.map((mod) => {
-            let config = mod.config as Object
-            if (mod.specification.identifier === 'app_home') {
-              config = {
-                embedded: true,
-                ...(config as Object)
-              }
-            }
             return {
               registrationId: mod.gid,
               registrationUuid: mod.gid,
               registrationTitle: mod.handle,
               type: mod.specification.identifier,
-              config: config as ActiveAppReleaseQuerySchema['app']['activeRelease']['version']['modules'][number]['config'],
+              config: mod.config,
               specification: {
                 ...mod.specification,
                 options: { managementExperience: 'cli' },
@@ -196,19 +189,19 @@ export class ShopifyDevelopersClient implements DeveloperPlatformClient {
   }
 
   async functionUploadUrl(): Promise<FunctionUploadUrlGenerateResponse> {
-    throw new AbortError('Not implemented: functionUploadUrl')
+    throw new BugError('Not implemented: functionUploadUrl')
   }
 
   async generateSignedUploadUrl(_input: GenerateSignedUploadUrlVariables): Promise<GenerateSignedUploadUrlSchema> {
-    throw new AbortError('Not implemented: generateSignedUploadUrl')
+    throw new BugError('Not implemented: generateSignedUploadUrl')
   }
 
   async updateExtension(_input: ExtensionUpdateDraftInput): Promise<ExtensionUpdateSchema> {
-    throw new AbortError('Not implemented: updateExtension')
+    throw new BugError('Not implemented: updateExtension')
   }
 
   async deploy(_input: AppDeployVariables): Promise<AppDeploySchema> {
-    throw new AbortError('Not implemented: deploy')
+    throw new BugError('Not implemented: deploy')
   }
 }
 
@@ -286,42 +279,40 @@ const MAGIC_URL = 'https://shopify.dev/apps/default-app-home'
 const MAGIC_REDIRECT_URL = 'https://shopify.dev/apps/default-app-home/api/auth'
 
 function createAppVars(name: string, isLaunchable = true, scopesArray?: string[]): CreateAppMutationVariables {
-  const appModules: AppModule[] = [
-    {
-      uuid: randomUUID(),
-      title: 'home',
-      specificationIdentifier: 'app_home',
-      config: JSON.stringify({app_url: isLaunchable ? 'https://example.com' : MAGIC_URL})
-    },
-    {
-      uuid: randomUUID(),
-      title: 'branding',
-      specificationIdentifier: 'branding',
-      config: JSON.stringify({name}),
-    },
-    {
-      uuid: randomUUID(),
-      title: 'webhooks',
-      specificationIdentifier: 'webhooks',
-      config: JSON.stringify({api_version: '2024-01'}),
-    },
-    {
-      uuid: randomUUID(),
-      title: 'app access',
-      specificationIdentifier: 'app_access',
-      config: JSON.stringify({redirect_url_allowlist: isLaunchable ? ['https://example.com/api/auth'] : [MAGIC_REDIRECT_URL]}),
-    },
-  ]
-  if (scopesArray && scopesArray.length > 0) {
-    appModules.push({
-      uuid: randomUUID(),
-      title: 'app access',
-      specificationIdentifier: "app_access",
-      config: JSON.stringify({scopes: scopesArray}),
-    })
+  return {
+    appModules: [
+      {
+        uuid: randomUUID(),
+        title: 'home',
+        specificationIdentifier: 'app_home',
+        config: JSON.stringify({
+          app_url: isLaunchable ? 'https://example.com' : MAGIC_URL,
+          embedded: isLaunchable,
+        })
+      },
+      {
+        uuid: randomUUID(),
+        title: 'branding',
+        specificationIdentifier: 'branding',
+        config: JSON.stringify({name}),
+      },
+      {
+        uuid: randomUUID(),
+        title: 'webhooks',
+        specificationIdentifier: 'webhooks',
+        config: JSON.stringify({api_version: '2024-01'}),
+      },
+      {
+        uuid: randomUUID(),
+        title: 'app access',
+        specificationIdentifier: 'app_access',
+        config: JSON.stringify({
+          redirect_url_allowlist: isLaunchable ? ['https://example.com/api/auth'] : [MAGIC_REDIRECT_URL],
+          ...(scopesArray && {scopes: scopesArray.map((scope) => scope.trim()).join(',')}),
+        }),
+      },
+    ]
   }
-
-  return {appModules}
 }
 
 async function stubbedExtensionSpecifications(): Promise<ExtensionSpecification[]> {
