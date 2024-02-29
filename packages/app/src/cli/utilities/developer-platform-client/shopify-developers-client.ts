@@ -1,4 +1,11 @@
 import {CreateAppMutation, CreateAppMutationVariables, CreateAppMutationSchema} from './shopify-developers-client/graphql/create-app.js'
+import {ActiveAppReleaseQuery, ActiveAppReleaseQueryVariables, ActiveAppReleaseQuerySchema} from './shopify-developers-client/graphql/active-app-release.js'
+import {SpecificationsQuery, SpecificationsQueryVariables, SpecificationsQuerySchema} from './shopify-developers-client/graphql/specifications.js'
+import {
+  ExtensionSpecificationsQuerySchema,
+  FlattenedRemoteSpecification
+} from '../../api/graphql/extension_specifications.js'
+import {loadLocalExtensionsSpecifications} from '../../models/extensions/load-specifications.js'
 import {DeveloperPlatformClient, Paginateable} from '../developer-platform-client.js'
 import {PartnersSession} from '../../../cli/services/context/partner-account-info.js'
 import {
@@ -21,6 +28,7 @@ import {isUnitTest} from '@shopify/cli-kit/node/context/local'
 import {AbortError, BugError} from '@shopify/cli-kit/node/error'
 import {graphqlRequest, GraphQLVariables, GraphQLResponse} from '@shopify/cli-kit/node/api/graphql'
 import {partnersFqdn} from '@shopify/cli-kit/node/context/fqdn'
+import {getArrayRejectingUndefined} from '@shopify/cli-kit/common/array'
 import Bottleneck from 'bottleneck'
 
 const ORG1 = {
@@ -103,7 +111,22 @@ export class ShopifyDevelopersClient implements DeveloperPlatformClient {
   }
 
   async specifications(_appId: string): Promise<ExtensionSpecification[]> {
-    return []
+    return stubbedExtensionSpecifications()
+    // // This should be the actual query, but it's not working at the moment...
+    // const query = SpecificationsQuery
+    // const variables: SpecificationsQueryVariables = {appId}
+    // const result = await developerPlatformRequest<SpecificationsQuerySchema>(ORG1.id, query, await this.token(), variables)
+    // console.log(JSON.stringify(result, null, 2))
+    // return result.specifications.map((spec): ExtensionSpecification => ({
+      // externalName: spec.name,
+      // additionalIdentifiers: [],
+      // partnersWebIdentifier: spec.identifier,
+      // surface: '',
+      // registrationLimit: 1,
+      // appModuleFeatures: (_config) => [],
+      // ...spec,
+      // experience: spec.experience.toLowerCase() as 'extension' | 'configuration',
+    // }))
   }
 
   async createApp(
@@ -138,8 +161,38 @@ export class ShopifyDevelopersClient implements DeveloperPlatformClient {
     throw new AbortError('Not implemented: appExtensionRegistrations')
   }
 
-  async activeAppVersion(_appId: string): Promise<ActiveAppVersionQuerySchema> {
-    throw new BugError('Not implemented: activeAppVersion')
+  async activeAppVersion(appId: string, orgId: string): Promise<ActiveAppVersionQuerySchema> {
+    const query = ActiveAppReleaseQuery
+    const variables: ActiveAppReleaseQueryVariables = {appId}
+    const result = await developerPlatformRequest<ActiveAppReleaseQuerySchema>(orgId, query, await this.token(), variables)
+    return {
+      app: {
+        activeAppVersion: {
+          appModuleVersions: result.app.activeRelease.version.modules.map((mod) => {
+            let config = mod.config as Object
+            if (mod.specification.identifier === 'app_home') {
+              config = {
+                embedded: true,
+                ...(config as Object)
+              }
+            }
+            return {
+              registrationId: mod.gid,
+              registrationUuid: mod.gid,
+              registrationTitle: mod.handle,
+              type: mod.specification.identifier,
+              config: config as ActiveAppReleaseQuerySchema['app']['activeRelease']['version']['modules'][number]['config'],
+              specification: {
+                ...mod.specification,
+                options: { managementExperience: 'cli' },
+                experience: mod.specification.experience.toLowerCase() as "configuration" | "extension" | "deprecated",
+              },
+            }
+          }),
+          ...result.app.activeRelease,
+        }
+      }
+    }
   }
 
   async functionUploadUrl(): Promise<FunctionUploadUrlGenerateResponse> {
@@ -230,29 +283,33 @@ interface AppModule {
 // this is a temporary solution for editions to support https://vault.shopify.io/gsd/projects/31406
 // read more here: https://vault.shopify.io/gsd/projects/31406
 const MAGIC_URL = 'https://shopify.dev/apps/default-app-home'
-// const MAGIC_REDIRECT_URL = 'https://shopify.dev/apps/default-app-home/api/auth'
+const MAGIC_REDIRECT_URL = 'https://shopify.dev/apps/default-app-home/api/auth'
 
 function createAppVars(name: string, isLaunchable = true, scopesArray?: string[]): CreateAppMutationVariables {
-  const config = isLaunchable ? {
-    app_url: 'https://example.com',
-    // redirect_url: ['https://example.com/api/auth'],
-  } : {
-    app_url: MAGIC_URL,
-    // redirect_url: [MAGIC_REDIRECT_URL],
-  }
-
   const appModules: AppModule[] = [
     {
       uuid: randomUUID(),
       title: 'home',
       specificationIdentifier: 'app_home',
-      config: JSON.stringify(config)
+      config: JSON.stringify({app_url: isLaunchable ? 'https://example.com' : MAGIC_URL})
     },
     {
       uuid: randomUUID(),
       title: 'branding',
       specificationIdentifier: 'branding',
       config: JSON.stringify({name}),
+    },
+    {
+      uuid: randomUUID(),
+      title: 'webhooks',
+      specificationIdentifier: 'webhooks',
+      config: JSON.stringify({api_version: '2024-01'}),
+    },
+    {
+      uuid: randomUUID(),
+      title: 'app access',
+      specificationIdentifier: 'app_access',
+      config: JSON.stringify({redirect_url_allowlist: isLaunchable ? ['https://example.com/api/auth'] : [MAGIC_REDIRECT_URL]}),
     },
   ]
   if (scopesArray && scopesArray.length > 0) {
@@ -265,4 +322,106 @@ function createAppVars(name: string, isLaunchable = true, scopesArray?: string[]
   }
 
   return {appModules}
+}
+
+async function stubbedExtensionSpecifications(): Promise<ExtensionSpecification[]> {
+  const extensionSpecifications: FlattenedRemoteSpecification[] = [
+    {
+      "name": "App access",
+      "externalName": "App access",
+      "externalIdentifier": "app_access",
+      "identifier": "app_access",
+      "gated": false,
+      "experience": "configuration",
+      "registrationLimit": 1,
+      "options": {
+        "managementExperience": "cli",
+        "registrationLimit": 1,
+      },
+      "features": {
+        "argo": undefined
+      }
+    },
+    {
+      "name": "App Home",
+      "externalName": "App Home",
+      "externalIdentifier": "app_home",
+      "identifier": "app_home",
+      "gated": false,
+      "experience": "configuration",
+      "registrationLimit": 1,
+      "options": {
+        "managementExperience": "cli",
+        "registrationLimit": 1,
+      },
+      "features": {
+        "argo": undefined
+      }
+    },
+    {
+      "name": "Branding",
+      "externalName": "Branding",
+      "externalIdentifier": "branding",
+      "identifier": "branding",
+      "gated": false,
+      "experience": "configuration",
+      "registrationLimit": 1,
+      "options": {
+        "managementExperience": "cli",
+        "registrationLimit": 1,
+      },
+      "features": {
+        "argo": undefined
+      }
+    },
+    {
+      "name": "Webhooks",
+      "externalName": "Webhooks",
+      "externalIdentifier": "webhooks",
+      "identifier": "webhooks",
+      "gated": false,
+      "experience": "configuration",
+      "registrationLimit": 1,
+      "options": {
+        "managementExperience": "cli",
+        "registrationLimit": 1
+      },
+      "features": {
+        "argo": undefined,
+      }
+    },
+    {
+      "name": "App Access",
+      "externalName": "App Access",
+      "externalIdentifier": "app_access",
+      "identifier": "app_access",
+      "gated": false,
+      "experience": "configuration",
+      "registrationLimit": 1,
+      "options": {
+        "managementExperience": "cli",
+        "registrationLimit": 1
+      },
+      "features": {
+        "argo": undefined,
+      }
+    },
+  ]
+
+  const local = await loadLocalExtensionsSpecifications()
+  const updatedSpecs = mergeLocalAndRemoteSpecs(local, extensionSpecifications)
+  return [...updatedSpecs]
+}
+
+function mergeLocalAndRemoteSpecs(
+  local: ExtensionSpecification[],
+  remote: FlattenedRemoteSpecification[],
+): ExtensionSpecification[] {
+  const updated = local.map((spec) => {
+    const remoteSpec = remote.find((remote) => remote.identifier === spec.identifier)
+    if (remoteSpec) return {...spec, ...remoteSpec} as ExtensionSpecification
+    return undefined
+  })
+
+  return getArrayRejectingUndefined<ExtensionSpecification>(updated)
 }

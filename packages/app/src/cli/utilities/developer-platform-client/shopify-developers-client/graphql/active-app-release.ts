@@ -1,8 +1,8 @@
 import {gql} from 'graphql-request'
 
 export const ActiveAppReleaseQuery = gql`
-  query activeAppRelease($id: ID!) {
-    app(id: $ID) {
+  query activeAppRelease($appId: ID!) {
+    app(id: $appId) {
       activeRelease {
         id
         version {
@@ -22,49 +22,31 @@ export const ActiveAppReleaseQuery = gql`
   }
 `
 
-/*         appModuleVersions { */
-          /* registrationId */
-          /* registrationUuid */
-          /* registrationTitle */
-          /* type */
-          /* config */
-          /* specification { */
-            /* identifier */
-            /* name */
-            /* experience */
-            /* options { */
-              /* managementExperience */
-            /* } */
-          /* } */
-        /* } */
-/*       } */
-
 export interface ActiveAppReleaseQueryVariables {
-  id: string
+  appId: string
 }
 
-interface AppModuleVersionSpecification {
+export interface AppModuleSpecification {
   identifier: string
+  externalIdentifier: string
   name: string
-  experience: 'extension' | 'configuration' | 'deprecated'
-  options: {
-    managementExperience: 'cli' | 'custom' | 'dashboard'
-  }
+  experience: 'EXTENSION' | 'CONFIGURATION' | 'DEPRECATED'
 }
 
-export interface AppModuleVersion {
-  registrationId: string
-  registrationUuid: string
-  registrationTitle: string
-  config?: string
-  type: string
-  specification?: AppModuleVersionSpecification
+export interface AppModule {
+  gid: string
+  handle: string
+  config: string
+  specification: AppModuleSpecification
 }
 
-export interface ActiveAppVersionQuerySchema {
+export interface ActiveAppReleaseQuerySchema {
   app: {
-    activeAppVersion: {
-      appModuleVersions: AppModuleVersion[]
+    activeRelease: {
+      id: string
+      version: {
+        modules: AppModule[]
+      }
     }
   }
 }
