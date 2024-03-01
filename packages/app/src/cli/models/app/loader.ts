@@ -113,9 +113,15 @@ export async function parseConfigurationObject<TSchema extends zod.ZodType>(
 
   const parseResult = schema.safeParse(configurationObject)
   if (!parseResult.success) {
-    const formattedError = JSON.stringify(parseResult.error.issues, null, 2)
+    let humanReadableError = ''
+    parseResult.error.issues.forEach((issue) => {
+      const path = issue.path.join('.')
+      humanReadableError += `• [${path}]: ${issue.message}\n`
+    })
     return abortOrReport(
-      outputContent`Fix a schema error in ${outputToken.path(filepath)}:\n${formattedError}`,
+      outputContent`App configuration is not valid\nValidation errors in ${outputToken.path(
+        filepath,
+      )}:\n\n${humanReadableError}`,
       fallbackOutput,
       filepath,
       parseResult.error.issues,

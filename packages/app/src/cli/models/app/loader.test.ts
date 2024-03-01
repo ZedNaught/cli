@@ -349,7 +349,7 @@ wrong = "property"
     })
 
     // When
-    await expect(loadApp({directory: tmpDir, specifications})).rejects.toThrow(/Fix a schema error in/)
+    await expect(loadApp({directory: tmpDir, specifications})).rejects.toThrow(/Validation errors in/)
   })
 
   test('throws an error if the extension type is invalid', async () => {
@@ -2259,7 +2259,7 @@ describe('parseConfigurationObject', () => {
         message: 'Required',
       },
     ]
-    const expectedFormatted = outputContent`Fix a schema error in tmp:\n${JSON.stringify(errorObject, null, 2)}`
+    const expectedFormatted = outputContent`Validation errors in tmp:\n${JSON.stringify(errorObject, null, 2)}`
     const abortOrReport = vi.fn()
 
     const {schema} = await buildVersionedAppSchema()
@@ -2283,7 +2283,7 @@ describe('parseConfigurationObject', () => {
         message: 'Expected string, received array',
       },
     ]
-    const expectedFormatted = outputContent`Fix a schema error in tmp:\n${JSON.stringify(errorObject, null, 2)}`
+    const expectedFormatted = outputContent`Validation errors in tmp:\n${JSON.stringify(errorObject, null, 2)}`
     const abortOrReport = vi.fn()
     await parseConfigurationObject(LegacyAppSchema, 'tmp', configurationObject, abortOrReport)
 
@@ -2330,7 +2330,7 @@ describe('parseConfigurationObject', () => {
         message: 'Invalid input',
       },
     ]
-    const expectedFormatted = outputContent`Fix a schema error in tmp:\n${JSON.stringify(errorObject, null, 2)}`
+    const expectedFormatted = outputContent`Validation errors in tmp:\n${JSON.stringify(errorObject, null, 2)}`
     const abortOrReport = vi.fn()
     await parseConfigurationObject(WebConfigurationSchema, 'tmp', configurationObject, abortOrReport)
 
@@ -2786,7 +2786,7 @@ describe('WebhooksSchema', () => {
 
   async function setupParsing(errorObj: zod.ZodIssue | {}, webhookConfigOverrides: WebhooksConfig) {
     const err = Array.isArray(errorObj) ? errorObj : [errorObj]
-    const expectedFormatted = outputContent`Fix a schema error in tmp:\n${JSON.stringify(err, null, 2)}`
+    const expectedFormatted = outputContent`Validation errors in tmp:\n${JSON.stringify(err, null, 2)}`
     const abortOrReport = vi.fn()
 
     const {path, ...toParse} = getWebhookConfig(webhookConfigOverrides)
