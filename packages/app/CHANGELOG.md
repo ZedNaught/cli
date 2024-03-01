@@ -1,5 +1,13 @@
 # @shopify/app
 
+## 3.56.1
+
+### Patch Changes
+
+- 3879af1a3: spec reverseTransform receives betas
+  - @shopify/cli-kit@3.56.1
+  - @shopify/plugin-cloudflare@3.56.1
+
 ## 3.56.0
 
 ### Minor Changes
